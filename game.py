@@ -5,6 +5,7 @@ import tty
 import termios
 import threading
 import random
+import select
 from enum import IntEnum
 
 ## MARK: Constants ##
@@ -85,7 +86,8 @@ p_room = 0
 inventory = []
 # fix_rooms = random.sample([1, 2, 3, 4, 5, 6, 7, 8], FIX_MAX)
 fix_rooms = [1]
-quick_rooms = random.sample([1, 3, 4, 6, 7, 8], QUICK_MAX)
+# quick_rooms = random.sample([1, 3, 4, 6, 7, 8], QUICK_MAX)
+quick_rooms = [1]
 
 ## MARK: Convenience functions ##
 wait = lambda s: time.sleep(0) #s
@@ -120,11 +122,14 @@ class PosThread(threading.Thread):
 
 def cursor_pos():
 	print('\x1b7', end='')
+	sys.stdout.flush()
 	thread = PosThread()
 	thread.start()
 	print('\x1b[6n\x1b[F')
+	sys.stdout.flush()
 	thread.join()
 	print('\x1b8', end='')
+	sys.stdout.flush()
 	return [int(coord) for coord in thread.cursor_pos[1:-1].split(';')]
 
 ## MARK: Printing to console ##
@@ -213,14 +218,16 @@ def next():
 
 def print_meters():
 	print('\x1b7', end='')
+	sys.stdout.flush()
 	meter_block = TextBlock(save=False, validate=False)
-	meter_block.add_text(Text('O2: [', row=1, end=False))
+	meter_block.add_text(Text('\x1b[2KO2: [', row=1, end=False))
 	meter_block.add_text(Text('{0}'.format('=' * oxy).ljust(oxy_max), fg=TextColors.oxy, end=False))
 	meter_block.add_text(Text('] {0}/{1} | \u26A1: ['.format(oxy, oxy_max), end=False))
 	meter_block.add_text(Text('{0}'.format('=' * eng).ljust(eng_max), fg=TextColors.eng, end=False))
 	meter_block.add_text(Text('] {0}/{1} | Help (?)'.format(eng, eng_max), end=False))
 	meter_block.write_log()
 	print('\x1b8', end='')
+	sys.stdout.flush()
 
 def to_game(show_meters=True):
 	log(Text(logs[-1], end=False), save=False, clear=True, validate=False)
@@ -246,6 +253,7 @@ def end(state=GameOverState.win):
 ## MARK: CPU fight ##
 def battle_meters(enc, enc_max):
 	print('\x1b7', end='')
+	sys.stdout.flush()
 	battle_block = TextBlock(save=False, validate=False)
 	battle_block.add_text(Text('\u26A1: [', row=1, end=False))
 	battle_block.add_text(Text('{0}'.format('=' * eng).ljust(eng_max), fg=TextColors.eng, end=False))
@@ -254,9 +262,10 @@ def battle_meters(enc, enc_max):
 	battle_block.add_text(Text('] {0}/{1}'.format(enc, enc_max), end=False))
 	battle_block.write_log()
 	print('\x1b8', end='')
+	sys.stdout.flush()
 
 def hack_cpu(battle=FIX_MAX - len(fix_rooms)):
-	global eng
+	global eng, eng_max
 	intro_block = TextBlock(extra=2)
 	intro_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
 	intro_block.add_text(Text('Something must be wrong with GALILEO. I\'ll have to hack into the mainframe and fix the problem.', fg=TextColors.p_head))
@@ -324,7 +333,81 @@ def hack_cpu(battle=FIX_MAX - len(fix_rooms)):
 		next()
 	if eng == 0:
 		end(state=GameOverState.lose)
+	eng_max += 1
 	to_game()
+
+## MARK: Timed events ##
+class QuickThread(threading.Thread):
+	def __init__(self):
+		self.over = False
+		self.__exit = threading.Event()
+		threading.Thread.__init__(self)
+
+	def run(self):
+		global oxy
+		while oxy > 0:
+			time.sleep(1) #wait(1)
+			if self.__exit.is_set():
+				break
+			oxy -= 1
+			print_meters()
+		self.over = True
+
+	def stop(self):
+		self.__exit.set()
+
+def fix_hull():
+	global oxy, inventory, quick_rooms
+	quick_rooms.remove(p_room)
+	quick_block = TextBlock(extra=2)
+	quick_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+	quick_block.add_text(Text('There is a hole in the hull of the ship! I need to use my suit\'s emergency sealant before I run out of oxygen!', fg=TextColors.p_head))
+	quick_block.add_text(spacer())
+	quick_block.write_log()
+	log(Text('<Press any key to start the event>', styles=[TextStyles.faint]), save=False)
+	getch()
+	options_block = TextBlock(texts=[Text('1. Use suit sealant'), Text('2. Try to leave room before running out of oxygen')]).write_log()
+	thread = QuickThread()
+	thread.start()
+	fail = True
+	ch = ''
+	old_settings = termios.tcgetattr(sys.stdin)
+	try:
+			tty.setcbreak(sys.stdin.fileno())
+			while ch != '1' and ch != '2' and not thread.over:
+				if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+					ch = sys.stdin.read(1)
+	finally:
+		termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+	thread.stop()
+	thread.join()
+	if ch == '1':
+		fail = False
+	if oxy != oxy_max:
+		oxy += 1
+	print_meters()
+	if fail:
+		fail_block = TextBlock(extra=2)
+		if ch == '2':
+			fail_block.add_text(Text('Darn, I wasn\'t able make it out of the room in time.', fg=TextColors.p_head))
+		else:
+			fail_block.add_text(Text('Darn, I wasn\'t able to use the sealent in time.', fg=TextColors.p_head))
+		fail_block.add_text(Text('The suit\'s emergency oxygen system refilled a little of my O2.', fg=TextColors.p_head))
+		if inventory:
+			fail_block.extra = 4
+			lost_item = inventory.pop(random.randrange(len(inventory)))
+			fail_block.add_text(Text('Sadly, it looks like my {0} flew out and stopped up the hole'.format(lost_item.name), fg=TextColors.p_head))
+			fail_block.write_log()
+			log(Text('<Removed {0} from inventory>'.format(lost_item.name), styles=[TextStyles.faint]), save=False)
+			log(spacer())
+		else:
+			fail_block.add_text(Text('Luckily, it looks like a loose item in the room flew over and stopped up the hole.', fg=TextColors.p_head))
+			fail_block.add_text(spacer())
+			fail_block.write_log()
+	else:
+		TextBlock(texts=[Text('Looks like the seal worked!', fg=TextColors.p_head)], extra=2).write_log()
+	next()
+	log(spacer())
 
 ## MARK: Items ##
 class Item():
@@ -356,6 +439,7 @@ class EnergyPack(Item):
 		else:
 			eng += 1
 			self.remove_item()
+			print_meters()
 
 class OxygenPack(Item):
 	name = 'oxygen pack'
@@ -371,6 +455,7 @@ class OxygenPack(Item):
 		else:
 			oxy = oxy_max
 			self.remove_item()
+			print_meters()
 
 ## MARK: Rooms ##
 class RoomObj():
@@ -486,11 +571,12 @@ class R1(Room):
 		fix_block = TextBlock()
 		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
 		fix_block.add_text(Text('Great, I was able to access the value control systems and stop the leak!', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity', fg=TextColors.p_head))
 		fix_block.add_text(spacer())
 		fix_block.write_log()
 
 	def quick_event(self):
-		pass
+		fix_hull()
 
 class R2(Room):
 	name='Terraforming Equipment'
@@ -642,6 +728,8 @@ def move(direction):
 		else:
 			moved = False
 		if moved and rooms[p_room].new:
+			if p_room in quick_rooms:
+				rooms[p_room].quick_event()
 			rooms[p_room].new = False
 			room_block = TextBlock(texts=[Text(rooms[p_room].name, styles=[TextStyles.bold]), Text(rooms[p_room].info), spacer()])
 			if p_room in fix_rooms:
