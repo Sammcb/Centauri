@@ -19,7 +19,7 @@ SHIP = [
 	[7, None, 8]
 ]
 FIX_MAX = 3
-QUICK_MAX = 1
+QUICK_MAX = 2
 
 class GameOverState(IntEnum):
 	win = 0
@@ -53,6 +53,9 @@ class TextColors(IntEnum):
 	r6 = 200
 	r7 = 92
 	r8 = 80
+	crit = 46
+	good = 46
+	warn = 220
 
 class Text:
 	def __init__(self, text='', styles=None, fg=None, bg=None, slow=False, delay=0.05, center=False, row=None, col=None, end=True):
@@ -84,10 +87,9 @@ oxy = oxy_max
 eng = eng_max
 p_room = 0
 inventory = []
-# fix_rooms = random.sample([1, 2, 3, 4, 5, 6, 7, 8], FIX_MAX)
-fix_rooms = [1]
-# quick_rooms = random.sample([1, 3, 4, 6, 7, 8], QUICK_MAX)
-quick_rooms = [1]
+fix_rooms = random.sample([1, 2, 3, 4, 6, 7, 8], FIX_MAX)
+quick_rooms = random.sample([1, 3, 4, 6, 7, 8], QUICK_MAX)
+final = False
 
 ## MARK: Convenience functions ##
 wait = lambda s: time.sleep(0) #s
@@ -236,9 +238,21 @@ def to_game(show_meters=True):
 ## MAKR: Game over ##
 def end(state=GameOverState.win):
 	if state == GameOverState.win:
-		pass
+		log(Text(row=3, end=False), clear=True)
+		log(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.good, center=True))
+		log(spacer())
+		wait(1)
+		log(Text('You successfully restored all the ship\'s systems and have entered cryosleep for another 10 years till you arrive at Proxima Centauri b.'))
+		wait(1)
+		log(Text('Great job!'))
 	elif state == GameOverState.escape:
-		pass
+		log(Text(row=3, end=False), clear=True)
+		log(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.warn, center=True))
+		log(spacer())
+		wait(1)
+		log(Text('You successfully left on the escape pod, leaving the ship to likely crash. Sleeping in the pod\'s cryochamber, you hope that you will be found in the future.'))
+		wait(1)
+		log(Text('Better luck next time!'))
 	elif state==GameOverState.lose:
 		log(Text(row=3, end=False), clear=True)
 		log(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.danger, center=True))
@@ -246,7 +260,12 @@ def end(state=GameOverState.win):
 		wait(1)
 		log(Text('Your suit ran out of energy, causing the oxygen replenishment systems to cease. You suffocated and the ship crashed due to unsolved issues.'))
 		wait(1)
-		log(Text('Better luck next time, and thanks for playing!'))
+		log(Text('Better luck next time!'))
+	log(spacer())
+	log(Text('Thank you for playing...'))
+	log(spacer())
+	wait(1)
+	log(Text('CENTAURI', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.title, slow=True, delay=0.2, center=True))
 	log(spacer(), save=False, validate=False)
 	exit()
 
@@ -264,8 +283,8 @@ def battle_meters(enc, enc_max):
 	print('\x1b8', end='')
 	sys.stdout.flush()
 
-def hack_cpu(battle=FIX_MAX - len(fix_rooms)):
-	global eng, eng_max
+def hack_cpu():
+	global eng, eng_max, final, fix_rooms
 	intro_block = TextBlock(extra=2)
 	intro_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
 	intro_block.add_text(Text('Something must be wrong with GALILEO. I\'ll have to hack into the mainframe and fix the problem.', fg=TextColors.p_head))
@@ -274,16 +293,19 @@ def hack_cpu(battle=FIX_MAX - len(fix_rooms)):
 	intro_block.add_text(Text('Threat detected.', fg=TextColors.danger, slow=True))
 	intro_block.add_text(Text('Initializing defence protocol', fg=TextColors.cpu, slow=True, end=False))
 	intro_block.add_text(Text('...', fg=TextColors.cpu, slow=True, delay=1))
-	if battle == 0:
-		enc = enc_max = 3
-	elif battle == 1:
-		intro_block.add_text(Text('Encryption algorithm V2 loaded.', fg=TextColors.cpu, slow=True))
-		enc = enc_max = 5
-	elif battle == 2:
-		intro_block.add_text(Text('Encryption algorithm V3 loaded.', fg=TextColors.cpu, slow=True))
-		enc = enc_max = 7
-	elif battle == 3:
-		pass # final battle
+	battle = FIX_MAX - len(fix_rooms)
+	enc = enc_max = 3 + 2 * battle
+	intro_block.add_text(Text('Encryption algorithm V{0} loaded.'.format(battle + 1), fg=TextColors.cpu, slow=True))
+	if battle == FIX_MAX:
+		intro_block.add_text(spacer())
+		intro_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+		intro_block.add_text(Text('Wait! I needed root access to fix issues with the ship. I\'m your supervisor, {0}, remember?'.format(name)))
+		intro_block.add_text(spacer())
+		intro_block.add_text(Text('[{0}]'.format(CPU), fg=TextColors.cpu_name))
+		intro_block.add_text(Text('I\'m sorry, {0}, but I\'m afraid I can\'t do that.'.format(name), fg=TextColors.cpu, slow=True))
+		intro_block.add_text(Text('Neutralizing threat', fg=TextColors.cpu, slow=True, end=False))
+		intro_block.add_text(Text('...', fg=TextColors.cpu, slow=True, delay=1))
+		enc = enc_max = 10
 	intro_block.add_text(spacer())
 	intro_block.write_log()
 	next()
@@ -310,7 +332,7 @@ def hack_cpu(battle=FIX_MAX - len(fix_rooms)):
 					TextBlock(texts=[Text('Decreased encryption by 1 point')], save=False, validate=False, extra=2).write_log()
 				else:
 					enc -= 2
-					TextBlock(texts=[Text('Critical hack!', fg=TextColors.eng, end=False) ,Text(' Decreased encryption by 2 points')], save=False, validate=False, extra=2).write_log()
+					TextBlock(texts=[Text('Critical hack!', fg=TextColors.crit, end=False) ,Text(' Decreased encryption by 2 points')], save=False, validate=False, extra=2).write_log()
 			else:
 				p_safe = True
 				TextBlock(texts=[Text('Lifted hands off keyboard')], save=False, validate=False, extra=2).write_log()
@@ -334,6 +356,18 @@ def hack_cpu(battle=FIX_MAX - len(fix_rooms)):
 	if eng == 0:
 		end(state=GameOverState.lose)
 	eng_max += 1
+	eng += 1
+	if fix_rooms:
+		fix_rooms.remove(p_room)
+	if not fix_rooms and not final:
+		final = True
+		log(spacer(), save=False)
+		TextBlock(texts=[Text('All the issues should be fixed now. I need to go to the mainframe and reprogram GALILEO to open the cryopod.', fg=TextColors.p_head), spacer()], extra=2).write_log()
+		next()
+	elif final:
+		log(spacer(), save=False)
+		TextBlock(texts=[Text('Ok, I removed myself from GALILEO\'s threat data store. I should get back to the cryopod now.', fg=TextColors.p_head), spacer()], extra=2).write_log()
+		next()
 	to_game()
 
 ## MARK: Timed events ##
@@ -405,7 +439,10 @@ def fix_hull():
 			fail_block.add_text(spacer())
 			fail_block.write_log()
 	else:
-		TextBlock(texts=[Text('Looks like the seal worked!', fg=TextColors.p_head)], extra=2).write_log()
+		win_block = TextBlock(extra=2)
+		win_block.add_text(Text('The suit\'s emergency oxygen system refilled a little of my O2.', fg=TextColors.p_head))
+		win_block.add_text(Text('Looks like the seal worked!', fg=TextColors.p_head))
+		win_block.write_log()
 	next()
 	log(spacer())
 
@@ -467,31 +504,38 @@ class RoomObj():
 		raise NotImplementedError
 
 class Room:
-	def __init__(self, new=True, fix_event=None, quick_event=None, fix_done=True, quick_done=True, objects=None):
+	def __init__(self, new=True, fix_done=True, quick_done=True, objects=None):
 		self.new = new
-		self.objects = objects if objects else {}
-		self.fix_event = self.__fix_event_error
-		self.fix_event = fix_event if fix_event else self.fix_event
-		self.quick_event = self.__quick_event_error
-		self.quick_event = quick_event if quick_event else self.quick_event
 		self.fix_done = fix_done
 		self.quick_done = quick_done
+		self.objects = objects if objects else {}
 
-	def __fix_event_error(self):
+	def fix_event(self):
 		raise NotImplementedError
 
-	def __quick_event_error(self):
+	def quick_event(self):
+		raise NotImplementedError
+
+	def save(self):
+		raise NotImplementedError
+
+	def load(self):
 		raise NotImplementedError
 
 class R0(Room):
 	name='Bridge'
-	info='There is a single chair and a console at the front. To the left is a recently opened cryopod. To the right is storage box. Behind is a door.'
+	info='There is a single chair and a console at the front. To the left is a cryopod. To the right is storage box. Behind is a door.'
 	color=TextColors.r0
 
 	def __init__(self, door_locked=True, box_looted=False):
 		super().__init__(
 			new=False,
-			objects={'console': RoomObj(examine=self.examine_console), 'box': RoomObj(examine=self.examine_box), 'door': RoomObj(examine=self.examine_door)}
+			objects={
+				'console': RoomObj(examine=self.examine_console),
+				'box': RoomObj(examine=self.examine_box),
+				'door': RoomObj(examine=self.examine_door),
+				'cryopod': RoomObj(examine=self.examine_cryopod)
+			}
 		)
 		self.door_locked=door_locked
 		self.box_looted=box_looted
@@ -529,6 +573,18 @@ class R0(Room):
 	def examine_door(self):
 		TextBlock(texts=[Text('The door appears to be locked.' if self.door_locked else 'The door is unlocked.'), spacer()]).write_log()
 
+	def examine_cryopod(self):
+		if final:
+			end(state=GameOverState.win)
+		else:
+			TextBlock(texts=[Text('The cryopod can\'t be opened till I fix all the ship\'s issues.'), spacer()]).write_log()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.door_locked, self.box_looted]])
+
+	def load(self, data):
+		self.door_locked, self.box_looted = data
+
 class R1(Room):
 	name='Oxygen Tanks'
 	info='Large tanks filled with liquid oxygen stretch from floor to ceiling. There is a shelf in the corner with some portable o2 cells. A small terminal on the wall blinks periodically.'
@@ -538,8 +594,6 @@ class R1(Room):
 	def __init__(self, new=True, shelf_looted=False, fix_done=True, quick_done=True):
 		super().__init__(
 			new=new,
-			fix_event=self.fix_event,
-			quick_event=self.quick_event,
 			fix_done=fix_done,
 			quick_done=quick_done,
 			objects={'shelf': RoomObj(examine=self.examine_shelf), 'terminal': RoomObj(examine=self.examine_terminal)}
@@ -566,87 +620,336 @@ class R1(Room):
 
 	def fix_event(self):
 		hack_cpu()
-		fix_rooms.remove(p_room)
 		self.fix_done = True
 		fix_block = TextBlock()
 		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
-		fix_block.add_text(Text('Great, I was able to access the value control systems and stop the leak!', fg=TextColors.p_head))
-		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity', fg=TextColors.p_head))
+		fix_block.add_text(Text('Great, I was able to access the valve control systems and stop the leak!', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
 		fix_block.add_text(spacer())
 		fix_block.write_log()
 
 	def quick_event(self):
 		fix_hull()
 
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.shelf_looted, self.fix_done, self.quick_done]])
+
+	def load(self, data):
+		self.new, self.shelf_looted, self.fix_done, self.quick_done = data
+
 class R2(Room):
 	name='Terraforming Equipment'
 	info='Massive containers line the back wall filled with nutrient-rich soil, water, and seeds of various crops. The rest of the 1km long room is taken up by chemical synthesizing machines, which will produce the gasses necessary to start forming a breathable atmosphere on the planet.'
 	color=TextColors.r2
+	fix_info='The ground is covered in a thin layer of water. It looks like one of the containers had burst open!. I need to find a way to fix the problem. Maybe there is an object in the room I can use to interface with GALILEO...'
 
-	def __init__(self, new=True):
+	def __init__(self, new=True, crate_looted=False, fix_done=True):
 		super().__init__(
-			new=new
+			new=new,
+			fix_done=fix_done,
+			objects={'monitor': RoomObj(examine=self.examine_monitor), 'crate': RoomObj(examine=self.examine_crate)}
 		)
+		self.crate_looted = crate_looted
+
+	def examine_monitor(self):
+		if self.fix_done:
+			TextBlock(texts=[Text('A table shows that all equipment is functional and ready for deployment.'), spacer()]).write_log()
+		else:
+			log(spacer())
+			self.fix_event()
+
+	def examine_crate(self):
+		global inventory
+		if self.crate_looted:
+			TextBlock(texts=[Text('[{0}]'.format(name), fg=TextColors.p_name), Text('I can\'t see anything else inside the crate.', fg=TextColors.p_head), spacer()]).write_log()
+		else:
+			self.crate_looted = True
+			TextBlock(texts=[Text('There is an {0} inside the crate.'.format(EnergyPack.name))], extra=3).write_log()
+			log(Text('<Added {0} to inventory>'.format(EnergyPack.name), styles=[TextStyles.faint]), save=False)
+			log(spacer())
+			inventory += [EnergyPack()]
+
+	def fix_event(self):
+		hack_cpu()
+		self.fix_done = True
+		fix_block = TextBlock()
+		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+		fix_block.add_text(Text('Great, I was able to tell GALILEO to repair the container and vacuum up the water!', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
+		fix_block.add_text(spacer())
+		fix_block.write_log()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.crate_looted, self.fix_done]])
+
+	def load(self, data):
+		self.new, self.crate_looted, self.fix_done = data
 
 class R3(Room):
 	name='Food Stores'
 	info='The room is filled floor to ceiling with hydroponic gardens growing, potatoes, carrots, tomatoes, wheat, beans, and what appears to be almost every other fruit, vegetable, and grain. Below the glass floor, large freezers were being filled by robotic haversters which must have been running most of the flight.'
 	color=TextColors.r3
+	fix_info='There are potatoes all over the floor. It looks like one of the hydroponic garden harveters is broken. Let me see what I can do to fix the issue.'
 
-	def __init__(self, new=True):
+	def __init__(self, new=True, trapdoor_looted=False, fix_done=True, quick_done=True):
 		super().__init__(
-			new=new
+			new=new,
+			fix_done=fix_done,
+			quick_done=quick_done,
+			objects={'console': RoomObj(examine=self.examine_console), 'trapdoor': RoomObj(examine=self.examine_trapdoor)}
 		)
+		self.trapdoor_looted = trapdoor_looted
+
+	def examine_console(self):
+		if self.fix_done:
+			TextBlock(texts=[Text('Looks like food production is proceeding normally.'), spacer()]).write_log()
+		else:
+			log(spacer())
+			self.fix_event()
+
+	def examine_trapdoor(self):
+		global inventory
+		if self.trapdoor_looted:
+			TextBlock(texts=[Text('[{0}]'.format(name), fg=TextColors.p_name), Text('The space is empty.', fg=TextColors.p_head), spacer()]).write_log()
+		else:
+			self.crate_looted = True
+			TextBlock(texts=[Text('There is a space under a trapdoor in the floor. There is an {0} inside.'.format(OxygenPack.name))], extra=3).write_log()
+			log(Text('<Added {0} to inventory>'.format(OxygenPack.name), styles=[TextStyles.faint]), save=False)
+			log(spacer())
+			inventory += [OxygenPack()]
+
+	def fix_event(self):
+		hack_cpu()
+		self.fix_done = True
+		fix_block = TextBlock()
+		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+		fix_block.add_text(Text('The havesting system should be fixed now.', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
+		fix_block.add_text(spacer())
+		fix_block.write_log()
+
+	def quick_event(self):
+		fix_hull()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.trapdoor_looted, self.fix_done, self.quick_done]])
+
+	def load(self, data):
+		self.new, self.trapdoor_looted, self.fix_done, self.quick_done = data
 
 class R4(Room):
 	name='Reactor'
 	info='One of the most impressive feats of human engineering at the time, the reactor was built to use incredibly strong magnetic fields to stabilize a small solar core, then harvest the energy of the miniature sun using an encompassing array of solar panels.'
 	color=TextColors.r4
+	fix_info='My suits built in Geiger counter indicates that some radiation is escaping! There must be an issue with the magnetic field generators. I need to fix this before the ractor fails!'
 
-	def __init__(self, new=True):
+	def __init__(self, new=True, fix_done=True, quick_done=True):
 		super().__init__(
-			new=new
+			new=new,
+			fix_done=fix_done,
+			quick_done=quick_done,
+			objects={'terminal': RoomObj(examine=self.examine_terminal)}
 		)
+
+	def examine_terminal(self):
+		if self.fix_done:
+			TextBlock(texts=[Text('The reactor seems to be operating at capacity.'), spacer()]).write_log()
+		else:
+			log(spacer())
+			self.fix_event()
+
+	def fix_event(self):
+		hack_cpu()
+		self.fix_done = True
+		fix_block = TextBlock()
+		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+		fix_block.add_text(Text('The reactor should be stable now. Good thing I stopped this before it failed.', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
+		fix_block.add_text(spacer())
+		fix_block.write_log()
+
+	def quick_event(self):
+		fix_hull()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.fix_done, self.quick_done]])
+
+	def load(self, data):
+		self.new, self.fix_done, self.quick_done = data
 
 class R5(Room):
 	name='Mainframe'
 	info='The sheer scale of the computer was enough to make most stop in their tracks and gaze in awe. This was the heart of the ship\'s computer, GALILEO. Designed to handle flight operations and maintenance during the 422 year journey, plus the terraforming and preparation of Proxima Centauri b, GALILEO was the most advanced AI ever built by humans.'
 	color=TextColors.r5
 
-	def __init__(self, new=True):
+	def __init__(self, new=True, fought=False):
 		super().__init__(
-			new=new
+			new=new,
+			objects={'primary console': RoomObj(examine=self.examine_primary_console)}
 		)
+		self.fought = fought
+
+	def examine_primary_console(self):
+		if self.fought:
+			galileo_block = TextBlock()
+			galileo_block.add_text(Text('[{0}]'.format(CPU), fg=TextColors.cpu_name))
+			galileo_block.add_text(Text('All systems operational. I recommend you re-enter the cryopod to await our arrival.', fg=TextColors.cpu, slow=True))
+			galileo_block.add_text(spacer())
+			galileo_block.write_log()
+		elif final:
+			hack_cpu()
+			self.fought = True
+		else:
+			galileo_block = TextBlock()
+			galileo_block.add_text(Text('[{0}]'.format(CPU), fg=TextColors.cpu_name))
+			galileo_block.add_text(Text('Access denied.', fg=TextColors.danger, slow=True))
+			galileo_block.add_text(spacer())
+			galileo_block.write_log()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.fought]])
+
+	def load(self, data):
+		self.new, self.fought = data
 
 class R6(Room):
 	name='Escape Pod'
 	info='A small escape pod located in a hanger bay. With the ability to take off and land, it was more of an exploration vehicle than an escape pod. The interior contains little more than an area to store necessary supplies, a cryopod in case the ship is stranded, and a transmitter to allow rescuers to locate the ship.'
 	color=TextColors.r6
+	fix_info='What! The escape pod looks like it\'s preparing to launch. I need to stop it quickly!'
 
-	def __init__(self, new=True):
+	def __init__(self, new=True, pod_looted=False, fix_done=True, quick_done=True):
 		super().__init__(
-			new=new
+			new=new,
+			fix_done=fix_done,
+			quick_done=quick_done,
+			objects={'pod': RoomObj(examine=self.examine_pod), 'pod console': RoomObj(examine=self.examine_pod_console)}
 		)
+		self.pod_looted = pod_looted
+
+	def examine_pod(self):
+		global inventory
+		if self.pod_looted:
+			TextBlock(texts=[Text('[{0}]'.format(name), fg=TextColors.p_name), Text('There is nothing left in the pod emergency stores.', fg=TextColors.p_head), spacer()]).write_log()
+		else:
+			self.pod_looted = True
+			TextBlock(texts=[Text('The is a locker with some emergency stores with an {0}.'.format(EnergyPack.name))], extra=3).write_log()
+			log(Text('<Added {0} to inventory>'.format(EnergyPack.name), styles=[TextStyles.faint]), save=False)
+			log(spacer())
+			inventory += [EnergyPack()]
+
+	def examine_pod_console(self):
+		if self.fix_done:
+			pod_console_block = TextBlock()
+			pod_console_block.add_text(Text('What would you like to do?'))
+			pod_console_block.add_text(Text('a) Use escape pod'))
+			pod_console_block.add_text(Text('b) Close'))
+			pod_console_block.write_log()
+			option = prompt(allowed=['a', 'b'], main=False)
+			if option == 'a':
+				end(state=GameOverState.escape)
+		else:
+			log(spacer())
+			self.fix_event()
+
+	def fix_event(self):
+		hack_cpu()
+		self.fix_done = True
+		fix_block = TextBlock()
+		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+		fix_block.add_text(Text('The pod launch sequence has stopped. I can always use this if I can\'t fix all the ship\' problems.', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
+		fix_block.add_text(spacer())
+		fix_block.write_log()
+
+	def quick_event(self):
+		fix_hull()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.pod_looted, self.fix_done, self.quick_done]])
+
+	def load(self, data):
+		self.new, self.pod_looted, self.fix_done, self.quick_done = data
 
 class R7(Room):
 	name='Engine'
 	info='Although this engine could push the ship up to speeds of 1/5 the speed of light, given the close proximity to the Alpha Centauri system, it would take slightly longer to reach the planet due to the long acceleration and deceleration needed.'
 	color=TextColors.r7
+	fix_info='Loud sounds can be heard periodically. There must be something wrong with the engine deceleration sequence. I need to run the debugging sequence so GALILEO can adjust the engine parameters.'
 
-	def __init__(self, new=True):
+	def __init__(self, new=True, fix_done=True, quick_done=True):
 		super().__init__(
-			new=new
+			new=new,
+			fix_done=fix_done,
+			quick_done=quick_done,
+			objects={'console': RoomObj(examine=self.examine_console)}
 		)
+
+	def examine_console(self):
+		if self.fix_done:
+			TextBlock(texts=[Text('The engine is decelerating. We should reach the planet in just a little over 10 years.'), spacer()]).write_log()
+		else:
+			log(spacer())
+			self.fix_event()
+
+	def fix_event(self):
+		hack_cpu()
+		self.fix_done = True
+		fix_block = TextBlock()
+		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+		fix_block.add_text(Text('All the can be heard is a low hum. The deceleration process should be fix now.', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
+		fix_block.add_text(spacer())
+		fix_block.write_log()
+
+	def quick_event(self):
+		fix_hull()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.fix_done, self.quick_done]])
+
+	def load(self, data):
+		self.new, self.fix_done, self.quick_done = data
 
 class R8(Room):
 	name='Shield Generator'
 	info='The size of a city block, the device converts energy to form small electric, magnetic, and gravitational fields around the ship. The shield generator provides a moderate amount of protection against strong solar winds, asteriods and other debris, and potentially any alien ships if such an encounter were to occur.'
 	color=TextColors.r8
+	fix_info='It seems like the electric field generator is down. I\'ll need to find a way to restore it or a solar flare from Alpha Centauri A could knock out the ships systems.'
 
-	def __init__(self, new=True):
+	def __init__(self, new=True, fix_done=True, quick_done=True):
 		super().__init__(
-			new=new
+			new=new,
+			fix_done=fix_done,
+			quick_done=quick_done,
+			objects={'monitor': RoomObj(examine=self.examine_monitor)}
 		)
+
+	def examine_monitor(self):
+		if self.fix_done:
+			TextBlock(texts=[Text('The electric, magnetic, and gravitational fields are all operating at full strengh.'), spacer()]).write_log()
+		else:
+			log(spacer())
+			self.fix_event()
+
+	def fix_event(self):
+		hack_cpu()
+		self.fix_done = True
+		fix_block = TextBlock()
+		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
+		fix_block.add_text(Text('A loud crackle indicates that the electric field generator is up and running again.', fg=TextColors.p_head))
+		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
+		fix_block.add_text(spacer())
+		fix_block.write_log()
+
+	def quick_event(self):
+		fix_hull()
+
+	def save(self):
+		return ','.join([str(param) for param in [self.new, self.fix_done, self.quick_done]])
+
+	def load(self, data):
+		self.new, self.fix_done, self.quick_done = data
 
 rooms = [R0(), R1(), R2(), R3(), R4(), R5(), R6(), R7(), R8()]
 for ri in fix_rooms:
@@ -787,7 +1090,33 @@ def run_cmd(cmd):
 	elif cmd in ['up', 'down', 'left', 'right']:
 		move(cmd)
 	elif cmd == 'save':
-		pass
+		TextBlock(texts=[Text('Enter file name:')]).write_log()
+		f_name = prompt(blocked=[''], lower=False, main=False)
+		with open(f_name, 'w') as f:
+			f.write('--NAME--\n')
+			f.write('{0}\n'.format(name))
+			f.write('--OXY_MAX--\n')
+			f.write('{0}\n'.format(oxy_max))
+			f.write('--ENG_MAX--\n')
+			f.write('{0}\n'.format(eng_max))
+			f.write('--OXY--\n')
+			f.write('{0}\n'.format(oxy))
+			f.write('--ENG--\n')
+			f.write('{0}\n'.format(eng))
+			f.write('--ROOM--\n')
+			f.write('{0}\n'.format(p_room))
+			f.write('--FINAL--\n')
+			f.write('{0}\n'.format(final))
+			f.write('--INVENTORY--\n')
+			f.write('{0}\n'.format(','.join([item.name for item in inventory])))
+			f.write('--FIX_ROOMS--\n')
+			f.write('{0}\n'.format(','.join([str(room) for room in fix_rooms])))
+			f.write('--QUICK_ROOMS--\n')
+			f.write('{0}\n'.format(','.join([str(room) for room in quick_rooms])))
+			f.write('--ROOMS--\n')
+			[f.write('{0}\n'.format(room.save())) for room in rooms]
+			f.write('--LOGS--\n')
+			[f.write('{0}\n--\n'.format(log.rstrip())) for log in logs]
 	elif cmd == 'quit':
 		exit()
 
@@ -867,8 +1196,60 @@ def game_start():
 		run_cmd(cmd)
 
 def init():
-	title_screen()
-	start_cutscene()
-	game_start()
+	global name, oxy_max, eng_max, oxy, eng, p_room, final, inventory, fix_rooms, quick_rooms, logs
+	if len(sys.argv) > 2:
+		log(Text('Either run python3 game.py or python3 game.py <savefile>'), save=False, validate=False)
+		exit()
+	elif len(sys.argv) > 1:
+		with open(sys.argv[1], 'r') as f:
+			lines = f.readlines()
+			lines = [line.rstrip() for line in lines]
+			i = 0
+			while i < len(lines):
+				if lines[i] == '--NAME--':
+					name = lines[i + 1]
+				elif lines[i] == '--OXY_MAX--':
+					oxy_max = int(lines[i + 1])
+				elif lines[i] == '--ENG_MAX--':
+					eng_max = int(lines[i + 1])
+				elif lines[i] == '--OXY--':
+					oxy = int(lines[i + 1])
+				elif lines[i] == '--ENG--':
+					eng = int(lines[i + 1])
+				elif lines[i] == '--ROOM--':
+					p_room = int(lines[i + 1])
+				elif lines[i] == '--FINAL--':
+					final = lines[i + 1] == 'True'
+				elif lines[i] == '--INVENTORY--':
+					for item_name in lines[i + 1].split(','):
+						if item_name == EnergyPack.name:
+							inventory += [EnergyPack()]
+						elif item_name == OxygenPack.name:
+							inventory += [OxygenPack()]
+				elif lines[i] == '--FIX_ROOMS--':
+					fix_rooms = [int(room) for room in lines[i + 1].split(',')]
+				elif lines[i] == '--QUICK_ROOMS--':
+					quick_rooms = [int(room) for room in lines[i + 1].split(',')]
+				elif lines[i] == '--ROOMS--':
+					for n in range(len(rooms)):
+						i += 1
+						rooms[n].load([param == 'True' for param in lines[i].split(',')])
+				elif lines[i] == '--LOGS--':
+					i += 1
+					logs = ['']
+					while i < len(lines):
+						if lines[i] == '--':
+							logs.append('')
+						else:
+							logs[-1] += lines[i] + '\n'
+						i += 1
+					del logs[-1]
+				i += 1
+		to_game()
+		game_start()
+	else:
+		title_screen()
+		start_cutscene()
+		game_start()
 
 init()
