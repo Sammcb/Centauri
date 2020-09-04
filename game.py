@@ -215,7 +215,7 @@ def prompt(allowed=[], blocked=[], lower=True, main=True, save=True):
 spacer = lambda n=1: Text('\n' * (n - 1))
 
 def next():
-	log(Text('<Press any key to continue>', styles=[TextStyles.faint], end=False), save=False)
+	log(Text('<Press enter to continue>', styles=[TextStyles.faint], end=False), save=False)
 	getch()
 
 def print_meters():
@@ -262,7 +262,7 @@ def end(state=GameOverState.win):
 		end_block.add_text(Text('{*}#]]                ', center=True))
 		end_block.add_text(Text('<->#]]                ', center=True))
 		end_block.add_text(Text('{*}#]]}}                ', center=True))
-		end_block.add_text(Text('+##[          ~:[=]D', center=True))
+		end_block.add_text(Text('+##[         <<:[=]D', center=True))
 		end_block.add_text(Text('{*}#]]}}                ', center=True))
 		end_block.add_text(Text('<->#]]                ', center=True))
 		end_block.add_text(Text('{*}#]]                ', center=True))
@@ -416,7 +416,7 @@ def fix_hull():
 	quick_block.add_text(Text('There is a hole in the hull of the ship! I need to use my suit\'s emergency sealant before I run out of oxygen!', fg=TextColors.p_head))
 	quick_block.add_text(spacer())
 	quick_block.write_log()
-	log(Text('<Press any key to start the event>', styles=[TextStyles.faint]), save=False)
+	log(Text('<Press enter to start the event>', styles=[TextStyles.faint]), save=False)
 	getch()
 	options_block = TextBlock(texts=[Text('1. Use suit sealant'), Text('2. Try to leave room before running out of oxygen')]).write_log()
 	thread = QuickThread()
@@ -768,7 +768,7 @@ class R4(Room):
 	name='Reactor'
 	info='One of the most impressive feats of human engineering at the time, the reactor was built to use incredibly strong magnetic fields to stabilize a small solar core, then harvest the energy of the miniature sun using an encompassing array of solar panels.'
 	color=TextColors.r4
-	fix_info='My suits built in Geiger counter indicates that some radiation is escaping! There must be an issue with the magnetic field generators. I need to fix this before the ractor fails!'
+	fix_info='My suits built in Geiger counter indicates that some radiation is escaping! There must be an issue with the magnetic field generators. I need to fix this before the reactor fails!'
 
 	def __init__(self, new=True, fix_done=True, quick_done=True):
 		super().__init__(
@@ -924,7 +924,7 @@ class R7(Room):
 		self.fix_done = True
 		fix_block = TextBlock()
 		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
-		fix_block.add_text(Text('All the can be heard is a low hum. The deceleration process should be fix now.', fg=TextColors.p_head))
+		fix_block.add_text(Text('All that can be heard is a low hum. The deceleration process should be fixed now.', fg=TextColors.p_head))
 		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
 		fix_block.add_text(spacer())
 		fix_block.write_log()
@@ -1003,7 +1003,7 @@ def print_logs():
 
 def print_map():
 	log(Text('--Map-- ', end=False), save=False, clear=True, validate=False)
-	log(Text('(press any key to exit)', styles=[TextStyles.faint]), save=False, validate=False)
+	log(Text('(press enter to exit)', styles=[TextStyles.faint]), save=False, validate=False)
 	map_block = TextBlock(save=False, validate=False)
 	for i, row in enumerate(SHIP):
 		for n, ri in enumerate(row):
@@ -1028,7 +1028,7 @@ def print_map():
 
 def print_help():
 	log(Text('--List of commands-- ', end=False), save=False, clear=True, validate=False)
-	log(Text('(press any key to exit)', styles=[TextStyles.faint]), save=False, validate=False)
+	log(Text('(press enter to exit)', styles=[TextStyles.faint]), save=False, validate=False)
 	for cmd, cmd_info in CMDS.items():
 		log(Text('{0}'.format(cmd), end=False), save=False, validate=False)
 		log(Text(' - {0}'.format(cmd_info)), save=False, validate=False)
@@ -1113,7 +1113,10 @@ def run_cmd(cmd):
 		use_block.write_log()
 		option = prompt(allowed=[item.name for item in inventory] + ['nothing'], main=False)
 		if option != 'nothing':
-			[item.use() for item in inventory if item.name == option]
+			for item in inventory:
+				if item.name == option:
+					item.use()
+					break
 	elif cmd in ['up', 'down', 'left', 'right']:
 		move(cmd)
 	elif cmd == 'save':
@@ -1164,7 +1167,7 @@ def title_screen():
 	title_block.add_text(Text('~=]=\\\\     ', center=True, row=9))
 	title_block.add_text(Text('  }###==+O)', center=True))
 	title_block.add_text(Text('~=]=//     ', center=True))
-	title_block.add_text(Text('Press any key to start', styles=[TextStyles.bold, TextStyles.blink], center=True, row=15))
+	title_block.add_text(Text('Press enter to start', styles=[TextStyles.bold, TextStyles.blink], center=True, row=15))
 	title_block.add_text(Text('<Set background color to black and text color to white. Best played on 80x24.>', styles=[TextStyles.faint], center=True))
 	title_block.add_text(spacer())
 	title_block.write_log()
