@@ -92,7 +92,7 @@ quick_rooms = random.sample([1, 3, 4, 6, 7, 8], QUICK_MAX)
 final = False
 
 ## MARK: Convenience functions ##
-wait = lambda s: time.sleep(0) #s
+wait = lambda s: time.sleep(s)
 
 def getch():
 	fd = sys.stdin.fileno()
@@ -162,7 +162,7 @@ def log(text, save=True, clear=False, clear_row=1, validate=True):
 	clear_log(clear_row) if clear else None
 	print(text.mods(), end='')
 	sys.stdout.flush()
-	if False: #text.slow
+	if text.slow:
 		for c in text.text:
 			sys.stdout.write(c)
 			sys.stdout.flush()
@@ -237,36 +237,54 @@ def to_game(show_meters=True):
 
 ## MAKR: Game over ##
 def end(state=GameOverState.win):
+	log(Text(row=3, end=False), save=False, clear=True, validate=False)
+	end_block = TextBlock(save=False, validate=False)
 	if state == GameOverState.win:
-		log(Text(row=3, end=False), clear=True)
-		log(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.good, center=True))
-		log(spacer())
-		wait(1)
-		log(Text('You successfully restored all the ship\'s systems and have entered cryosleep for another 10 years till you arrive at Proxima Centauri b.'))
-		wait(1)
-		log(Text('Great job!'))
+		end_block.add_text(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.good, center=True))
+		end_block.add_text(spacer())
+		end_block.add_text(Text('You successfully restored all the ship\'s systems and have entered cryosleep for another 10 years till you arrive at Proxima Centauri b.'))
+		end_block.add_text(Text('Great job!'))
+		end_block.add_text(spacer())
+		end_block.add_text(Text('              .-----.', center=True))
+		end_block.add_text(Text('             / ~   ~~\\', center=True))
+		end_block.add_text(Text('~=]\\\\        .   ~~    .', center=True))
+		end_block.add_text(Text('  }===+O)    |~  ~  .. |', center=True))
+		end_block.add_text(Text('~=]//        .=~  -    .', center=True))
+		end_block.add_text(Text('              \\ ~ `_. /', center=True))
+		end_block.add_text(Text('             ._____.', center=True))
 	elif state == GameOverState.escape:
-		log(Text(row=3, end=False), clear=True)
-		log(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.warn, center=True))
-		log(spacer())
-		wait(1)
-		log(Text('You successfully left on the escape pod, leaving the ship to likely crash. Sleeping in the pod\'s cryochamber, you hope that you will be found in the future.'))
-		wait(1)
-		log(Text('Better luck next time!'))
+		end_block.add_text(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.warn, center=True))
+		end_block.add_text(spacer())
+		end_block.add_text(Text('You successfully left on the escape pod, leaving the ship to likely crash. Sleeping in the pod\'s cryochamber, you hope that you will be found in the future.'))
+		end_block.add_text(Text('Better luck next time!'))
+		end_block.add_text(spacer())
+		end_block.add_text(Text('=%%%%\\\\                ', center=True))
+		end_block.add_text(Text('{*}#]]                ', center=True))
+		end_block.add_text(Text('<->#]]                ', center=True))
+		end_block.add_text(Text('{*}#]]}}                ', center=True))
+		end_block.add_text(Text('+##[          ~:[=]D', center=True))
+		end_block.add_text(Text('{*}#]]}}                ', center=True))
+		end_block.add_text(Text('<->#]]                ', center=True))
+		end_block.add_text(Text('{*}#]]                ', center=True))
 	elif state==GameOverState.lose:
-		log(Text(row=3, end=False), clear=True)
-		log(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.danger, center=True))
-		log(spacer())
-		wait(1)
-		log(Text('Your suit ran out of energy, causing the oxygen replenishment systems to cease. You suffocated and the ship crashed due to unsolved issues.'))
-		wait(1)
-		log(Text('Better luck next time!'))
-	log(spacer())
-	log(Text('Thank you for playing...'))
-	log(spacer())
-	wait(1)
-	log(Text('CENTAURI', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.title, slow=True, delay=0.2, center=True))
-	log(spacer(), save=False, validate=False)
+		end_block.add_text(Text('Game Over', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.danger, center=True))
+		end_block.add_text(spacer())
+		end_block.add_text(Text('Your suit ran out of energy, causing the oxygen replenishment systems to cease. You suffocated and the ship crashed due to unsolved issues.'))
+		end_block.add_text(Text('Better luck next time!'))
+		end_block.add_text(spacer())
+		end_block.add_text(Text('   .      .-----.', center=True))
+		end_block.add_text(Text('  ,    *, / ~   ~~\\', center=True))
+		end_block.add_text(Text('. ,   . *.   ~~    .', center=True))
+		end_block.add_text(Text('   .   ~#|~  ~  .. |', center=True))
+		end_block.add_text(Text('     . %*.=~  -    .', center=True))
+		end_block.add_text(Text('      #*  \\ ~ `_. /', center=True))
+		end_block.add_text(Text('          ._____.', center=True))
+	end_block.add_text(spacer())
+	end_block.add_text(Text('Thank you for playing...'))
+	end_block.add_text(spacer())
+	end_block.add_text(Text('CENTAURI', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.title, slow=True, delay=0.2, center=True))
+	end_block.add_text(spacer())
+	end_block.write_log()
 	exit()
 
 ## MARK: CPU fight ##
@@ -287,7 +305,7 @@ def hack_cpu():
 	global eng, eng_max, final, fix_rooms
 	intro_block = TextBlock(extra=2)
 	intro_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
-	intro_block.add_text(Text('Something must be wrong with GALILEO. I\'ll have to hack into the mainframe and fix the problem.', fg=TextColors.p_head))
+	intro_block.add_text(Text('Something must be wrong with {0}. I\'ll have to hack into the mainframe and fix the problem.'.format(CPU), fg=TextColors.p_head))
 	intro_block.add_text(spacer())
 	intro_block.add_text(Text('[{0}]'.format(CPU), fg=TextColors.cpu_name))
 	intro_block.add_text(Text('Threat detected.', fg=TextColors.danger, slow=True))
@@ -319,7 +337,7 @@ def hack_cpu():
 			hack_block = TextBlock(save=False, validate=False)
 			hack_block.add_text(Text('What would you like to do?', row=3))
 			hack_block.add_text(Text('a) Hack', end=False))
-			hack_block.add_text(Text(' <lowers GALILEO\'s encryption by 1 (crit=2) point(s)>', styles=[TextStyles.faint]))
+			hack_block.add_text(Text(' <lowers {0}\'s encryption by 1 (crit=2) point(s)>'.format(CPU), styles=[TextStyles.faint]))
 			hack_block.add_text(Text('b) Take hands off keyboard', end=False))
 			hack_block.add_text(Text(' <protects against being zapped>', styles=[TextStyles.faint]))
 			hack_block.add_text(spacer())
@@ -339,9 +357,9 @@ def hack_cpu():
 		else:
 			hack_block = TextBlock(texts=[Text(row=3, end=False)] ,save=False, validate=False, extra=2)
 			cpu_action = random.randint(0, 10)
-			if cpu_action < 5:
-				hack_block.add_text(Text('GALILEO is computing...'))
-			elif cpu_action < 8:
+			if cpu_action < 3:
+				hack_block.add_text(Text('{0} is computing...'.format(CPU)))
+			elif cpu_action < 7:
 				if p_safe:
 					hack_block.add_text(Text('The keyboard sparks! Good thing I lifted my hands.'))	
 				else:
@@ -362,11 +380,11 @@ def hack_cpu():
 	if not fix_rooms and not final:
 		final = True
 		log(spacer(), save=False)
-		TextBlock(texts=[Text('All the issues should be fixed now. I need to go to the mainframe and reprogram GALILEO to open the cryopod.', fg=TextColors.p_head), spacer()], extra=2).write_log()
+		TextBlock(texts=[Text('All the issues should be fixed now. I need to go to the mainframe and reprogram {0} to open the cryopod.'.format(CPU), fg=TextColors.p_head), spacer()], extra=2).write_log()
 		next()
 	elif final:
 		log(spacer(), save=False)
-		TextBlock(texts=[Text('Ok, I removed myself from GALILEO\'s threat data store. I should get back to the cryopod now.', fg=TextColors.p_head), spacer()], extra=2).write_log()
+		TextBlock(texts=[Text('Ok, I removed myself from {0}\'s threat data store. I should get back to the cryopod now.'.format(CPU), fg=TextColors.p_head), spacer()], extra=2).write_log()
 		next()
 	to_game()
 
@@ -380,7 +398,7 @@ class QuickThread(threading.Thread):
 	def run(self):
 		global oxy
 		while oxy > 0:
-			time.sleep(1) #wait(1)
+			wait(1)
 			if self.__exit.is_set():
 				break
 			oxy -= 1
@@ -549,7 +567,16 @@ class R0(Room):
 		console_block.write_log()
 		option = prompt(allowed=['a', 'b', 'c'], main=False)
 		if option == 'a':
-			TextBlock(texts=[Text('[[INSERT MISSION HISTORY]]'), spacer()]).write_log()
+			mission_block = TextBlock()
+			mission_block.add_text(Text('Humans have successfully colonized the Solar System, expanding civilization to Mars, Venus, and Titan.'))
+			mission_block.add_text(Text('In an attempt to begin extra-solar colonization, the ship Explorer was launched with the goal of reaching the closest Earth-like planet, Proxima Centauri b, located 4.2 light years away.'))
+			mission_block.add_text(Text('With recent technological developments allowing for travel at 1/50th the speed of light, it could take only 207 years to reach the planet. However, due to the time it would take to fully accelerate and decelerate the engine, it would take 502 years at max speed.'))
+			mission_block.add_text(Text('Travelling at 1/100th the speed of light reduced the trip to only 422 years. In order to control the ship and ensure that the planet would be ready for the arrival of colonists later, and advanced AI was built to lead the mission.'))
+			mission_block.add_text(Text('It would be impossible to know how the AI, known as {0}, would act over the almost 500 years it would take to arrive at Proxima Centauri b and terraform the planet.'.format(CPU)))
+			mission_block.add_text(Text('Thus, Captain {0} was chosen to travel with {1} and fix any issues that might arise on the way.'.format(name, CPU)))
+			mission_block.add_text(Text('The successful completion of this mission will lay the foundation for human expansion accross the galaxy.'))
+			mission_block.add_text(spacer())
+			mission_block.write_log()
 		elif option == 'b':
 			if self.door_locked:
 				self.door_locked = False
@@ -641,7 +668,7 @@ class R2(Room):
 	name='Terraforming Equipment'
 	info='Massive containers line the back wall filled with nutrient-rich soil, water, and seeds of various crops. The rest of the 1km long room is taken up by chemical synthesizing machines, which will produce the gasses necessary to start forming a breathable atmosphere on the planet.'
 	color=TextColors.r2
-	fix_info='The ground is covered in a thin layer of water. It looks like one of the containers had burst open!. I need to find a way to fix the problem. Maybe there is an object in the room I can use to interface with GALILEO...'
+	fix_info='The ground is covered in a thin layer of water. It looks like one of the containers had burst open!. I need to find a way to fix the problem. Maybe there is an object in the room I can use to interface with {0}...'.format(CPU)
 
 	def __init__(self, new=True, crate_looted=False, fix_done=True):
 		super().__init__(
@@ -674,7 +701,7 @@ class R2(Room):
 		self.fix_done = True
 		fix_block = TextBlock()
 		fix_block.add_text(Text('[{0}]'.format(name), fg=TextColors.p_name))
-		fix_block.add_text(Text('Great, I was able to tell GALILEO to repair the container and vacuum up the water!', fg=TextColors.p_head))
+		fix_block.add_text(Text('Great, I was able to tell {0} to repair the container and vacuum up the water!'.format(CPU), fg=TextColors.p_head))
 		fix_block.add_text(Text('I was also able to access my suit\'s systems and increase the energy capacity.', fg=TextColors.p_head))
 		fix_block.add_text(spacer())
 		fix_block.write_log()
@@ -779,7 +806,7 @@ class R4(Room):
 
 class R5(Room):
 	name='Mainframe'
-	info='The sheer scale of the computer was enough to make most stop in their tracks and gaze in awe. This was the heart of the ship\'s computer, GALILEO. Designed to handle flight operations and maintenance during the 422 year journey, plus the terraforming and preparation of Proxima Centauri b, GALILEO was the most advanced AI ever built by humans.'
+	info='The sheer scale of the computer was enough to make most stop in their tracks and gaze in awe. This was the heart of the ship\'s computer, {0}. Designed to handle flight operations and maintenance during the 422 year journey, plus the terraforming and preparation of Proxima Centauri b, {1} was the most advanced AI ever built by humans.'.format(CPU, CPU)
 	color=TextColors.r5
 
 	def __init__(self, new=True, fought=False):
@@ -873,9 +900,9 @@ class R6(Room):
 
 class R7(Room):
 	name='Engine'
-	info='Although this engine could push the ship up to speeds of 1/5 the speed of light, given the close proximity to the Alpha Centauri system, it would take slightly longer to reach the planet due to the long acceleration and deceleration needed.'
+	info='Although this engine could push the ship up to speeds of 1/50 the speed of light, given the close proximity to the Alpha Centauri system, it would take slightly longer to reach the planet due to the long acceleration and deceleration needed.'
 	color=TextColors.r7
-	fix_info='Loud sounds can be heard periodically. There must be something wrong with the engine deceleration sequence. I need to run the debugging sequence so GALILEO can adjust the engine parameters.'
+	fix_info='Loud sounds can be heard periodically. There must be something wrong with the engine deceleration sequence. I need to run the debugging sequence so {0} can adjust the engine parameters.'.format(CPU)
 
 	def __init__(self, new=True, fix_done=True, quick_done=True):
 		super().__init__(
@@ -1131,8 +1158,16 @@ def scan_cutscene():
 	to_game(show_meters=False)
 
 def title_screen():
-	log(Text('CENTAURI', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.title, slow=True, delay=0.2, center=True, row=5, end=False), save=False, clear=True)
-	log(Text('Press any key to start', styles=[TextStyles.bold, TextStyles.blink], center=True, row=15), save=False)
+	clear_log()
+	title_block = TextBlock(save=False, validate=False)
+	title_block.add_text(Text('CENTAURI', styles=[TextStyles.bold, TextStyles.underline], fg=TextColors.title, slow=True, delay=0.2, center=True, row=5))
+	title_block.add_text(Text('~=]=\\\\     ', center=True, row=9))
+	title_block.add_text(Text('  }###==+O)', center=True))
+	title_block.add_text(Text('~=]=//     ', center=True))
+	title_block.add_text(Text('Press any key to start', styles=[TextStyles.bold, TextStyles.blink], center=True, row=15))
+	title_block.add_text(Text('<Set background color to black and text color to white. Best played on 80x24.>', styles=[TextStyles.faint], center=True))
+	title_block.add_text(spacer())
+	title_block.write_log()
 	getch()
 
 def start_cutscene():
@@ -1142,7 +1177,7 @@ def start_cutscene():
 	log(Text('W A R N I N G', styles=[TextStyles.bold, TextStyles.blink], fg=TextColors.danger, center=True, row=3), clear=True)
 	wait(3)
 	log(Text('[???]', fg=TextColors.cpu_name, row=6))
-	log(Text('Hull breach. Immediate action required.', styles=[TextStyles.bold], fg=TextColors.danger, slow=True))
+	log(Text('Critical damage to {0} detected. Immediate action required.'.format(', '.join([rooms[ri].name for ri in fix_rooms])), styles=[TextStyles.bold], fg=TextColors.danger, slow=True))
 	log(spacer())
 	wait(1)
 	log(Text('Prematurely lifting cryosleep protocol', fg=TextColors.cpu, slow=True, end=False))
@@ -1159,7 +1194,7 @@ def start_cutscene():
 	log(Text('Ugh. Wh~ what? My head is spinning...', fg=TextColors.p_head))
 	next()
 	log(Text('[{0}]'.format(CPU), fg=TextColors.cpu_name, row=3), clear=True)
-	log(Text('Your memory may be a bit foggy since I had to temporarily abort the cryosleep. I am the ship\'s computer, GALILEO', fg=TextColors.cpu, slow=True))
+	log(Text('Your memory may be a bit foggy since I had to temporarily abort the cryosleep. I am the ship\'s computer, {0}.'.format(CPU), fg=TextColors.cpu, slow=True))
 	log(spacer())
 	wait(1)
 	log(Text('[???]', fg=TextColors.p_name))
