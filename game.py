@@ -714,7 +714,7 @@ class R2(Room):
 
 class R3(Room):
 	name='Food Stores'
-	info='The room is filled floor to ceiling with hydroponic gardens growing, potatoes, carrots, tomatoes, wheat, beans, and what appears to be almost every other fruit, vegetable, and grain. Below the glass floor, large freezers were being filled by robotic haversters which must have been running most of the flight.'
+	info='The room is filled floor to ceiling with hydroponic gardens growing potatoes, carrots, tomatoes, wheat, beans, and what appears to be almost every other fruit, vegetable, and grain. Below the glass floor, large freezers are being filled by robotic harvesters which must have been running most of the flight.'
 	color=TextColors.r3
 	fix_info='There are potatoes all over the floor. It looks like one of the hydroponic garden harveters is broken. Let me see what I can do to fix the issue.'
 
@@ -739,7 +739,7 @@ class R3(Room):
 		if self.trapdoor_looted:
 			TextBlock(texts=[Text('[{0}]'.format(name), fg=TextColors.p_name), Text('The space is empty.', fg=TextColors.p_head), spacer()]).write_log()
 		else:
-			self.crate_looted = True
+			self.trapdoor_looted = True
 			TextBlock(texts=[Text('There is a space under a trapdoor in the floor. There is an {0} inside.'.format(OxygenPack.name))], extra=3).write_log()
 			log(Text('<Added {0} to inventory>'.format(OxygenPack.name), styles=[TextStyles.faint]), save=False)
 			log(spacer())
