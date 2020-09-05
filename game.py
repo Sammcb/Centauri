@@ -542,7 +542,7 @@ class Room:
 
 class R0(Room):
 	name='Bridge'
-	info='There is a single chair and a console at the front. To the left is a cryopod. To the right is storage box. Behind is a door.'
+	info='There is a single chair and a console at the front. To the left is a cryopod. To the right is a storage box. Behind is a door.'
 	color=TextColors.r0
 
 	def __init__(self, door_locked=True, box_looted=False):
